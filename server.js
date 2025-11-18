@@ -14,15 +14,15 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-
 app.use(cors());
 app.use(helmet());
 app.use(express.json());
-
 app.use(rateLimit({ windowMs: 60 * 1000, max: 60 }));
 
+// Serve static files
 app.use(express.static(path.join(__dirname, "public")));
 
+// API routes
 const OPENAI_KEY = process.env.OPENAI_API_KEY || "";
 const GROQ_KEY = process.env.GROQ_API_KEY || "";
 
@@ -67,6 +67,7 @@ app.post("/api/ai", async (req, res) => {
   }
 });
 
+// Quotes API
 const QUOTES = [
   "Jangan menyerah. Proses tidak mengkhianati hasil.",
   "Sukses dimulai ketika kamu berani melangkah.",
@@ -78,7 +79,14 @@ app.get("/api/quote", (req, res) => {
   res.json({ quote: q });
 });
 
+// Health
 app.get("/health", (req, res) => res.json({ status: "ok" }));
 
+// Fallback to index.html
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
+});
+
+// Start server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log("SERVER READY"));
