@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Tetris</title>
+<style>
+  body { background:#222; display:flex; justify-content:center; align-items:center; height:100vh; margin:0; }
+  canvas { background:#111; border-radius:8px; }
+</style>
+</head>
+<body>
+<canvas id="t" width="200" height="400"></canvas>
+<script>
+const c = document.getElementById("t");
+const ctx = c.getContext("2d");
+const size = 20;
+const cols = 10, rows = 20;
+
+let board = Array(rows).fill().map(()=>Array(cols).fill(0));
+let shapes = [
+  [[1,1,1],[0,1,0]], // T
+  [[1,1],[1,1]],     // O
+  [[1,1,0],[0,1,1]], // Z
+  [[0,1,1],[1,1,0]], // S
+  [[1,1,1,1]],       // I
+  [[1,0,0],[1,1,1]], // J
+  [[0,0,1],[1,1,1]]  // L
+];
+
+let cur = randomPiece();
+let pos = {x:3,y:0};
+
+function randomPiece() {
+  return shapes[Math.floor(Math.random()*shapes.length)];
+}
+
+function draw() {
+  ctx.fillStyle="#111";
+  ctx.fillRect(0,0,c.width,c.height);
+
+  for (let y=0;y<rows;y++){
+    for (let x=0;x<cols;x++){
+      if (board[y][x]) {
+        ctx.fillStyle="cyan";
+        ctx.fillRect(x*size, y*size, size-1, size-1);
+      }
+    }
+  }
+
+  ctx.fillStyle="yellow";
+  cur.forEach((row,dy)=>{
+    row.forEach((v,dx)=>{
+      if (v) ctx.fillRect((pos.x+dx)*size,(pos.y+dy)*size,size-1,size-1);
+    });
+  });
+}
+
+function collide(px,py,shape){
+  for (let y=0;y<shape.length;y++){
+    for (let x=0;x<shape[y].length;x++){
+      if (!shape[y][x]) continue;
+      if (py+y>=rows || px+x<0 || px+x>=cols || board[py+y][px+x]) return true;
+    }
+  }
+  return false;
+}
+
+function merge(){
+  cur.forEach((row,dy)=>{
+    row.forEach((v,dx)=>{
+      if(v) board[pos.y+dy][pos.x+dx]=1;
+    });
+  });
+}
+
+function rotate(mat){
+  return mat[0].map((_,i)=>mat.map(r=>r[i]).reverse());
+}
+
+function loop(){
+  pos.y++;
+  if (collide(pos.x,pos.y,cur)){
+    pos.y--;
+    merge();
+    clearLines();
+    cur = randomPiece();
+    pos = { x:3, y:0 };
+    if (collide(pos.x,pos.y,cur)){
+      alert("GAME OVER");
+      board = Array(rows).fill().map(()=>Array(cols).fill(0));
+    }
+  }
+
+  draw();
+  setTimeout(loop,400);
+}
+loop();
+
+function clearLines() {
+  board = board.filter(r => r.some(v=>!v));
+  while (board.length < rows) board.unshift(Array(cols).fill(0));
+}
+
+document.addEventListener("keydown", e=>{
+  if (e.key==="ArrowLeft" && !collide(pos.x-1,pos.y,cur)) pos.x--;
+  if (e.key==="ArrowRight" && !collide(pos.x+1,pos.y,cur)) pos.x++;
+  if (e.key==="ArrowDown") pos.y++;
+  if (e.key==="ArrowUp") {
+    let r = rotate(cur);
+    if (!collide(pos.x,pos.y,r)) cur = r;
+  }
+});
+</script>
+</body>
+</html>

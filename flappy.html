@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Flappy Bird</title>
+<style>
+  body { margin:0; background:#000; display:flex; justify-content:center; align-items:center; height:100vh; }
+  canvas { background:#4ec0ca; border-radius:10px; }
+</style>
+</head>
+<body>
+<canvas id="c" width="320" height="480"></canvas>
+<script>
+const canvas = document.getElementById("c");
+const ctx = canvas.getContext("2d");
+
+let bird = { x:50, y:200, vel:0 };
+let pipes = [];
+let frame = 0;
+let gameOver = false;
+
+function reset() {
+  bird = { x:50, y:200, vel:0 };
+  pipes = [];
+  frame = 0;
+  gameOver = false;
+}
+
+function loop() {
+  if (gameOver) return;
+
+  frame++;
+  ctx.fillStyle="#4ec0ca";
+  ctx.fillRect(0,0,320,480);
+
+  bird.vel += 0.5;
+  bird.y += bird.vel;
+
+  ctx.fillStyle="yellow";
+  ctx.beginPath();
+  ctx.arc(bird.x,bird.y,12,0,Math.PI*2);
+  ctx.fill();
+
+  if (frame % 90===0){
+    let top = Math.random()*200+20;
+    pipes.push({ x:320, top, gap:120 });
+  }
+
+  ctx.fillStyle="green";
+  pipes.forEach(p => {
+    p.x -= 2;
+    ctx.fillRect(p.x,0,40,p.top);
+    ctx.fillRect(p.x,p.top+p.gap,40,480 - (p.top+p.gap));
+
+    if (bird.x > p.x && bird.x < p.x+40 &&
+        (bird.y < p.top || bird.y > p.top+p.gap)) {
+      gameOver = true;
+      alert("GAME OVER");
+      reset();
+    }
+  });
+
+  if (bird.y > 470 || bird.y < 0){
+    gameOver = true;
+    alert("GAME OVER");
+    reset();
+  }
+
+  requestAnimationFrame(loop);
+}
+reset();
+loop();
+
+window.onclick = () => { bird.vel = -7; };
+</script>
+</body>
+</html>

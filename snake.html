@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Snake</title>
+<style>
+  body { background:#111; margin:0; display:flex; justify-content:center; align-items:center; height:100vh; }
+  canvas { background:#000; border-radius:10px; }
+</style>
+</head>
+<body>
+<canvas id="game" width="320" height="320"></canvas>
+<script>
+const c = document.getElementById("game");
+const ctx = c.getContext("2d");
+
+const size = 16;
+let snake = [{x:10,y:10}];
+let food = {x:15,y:15};
+let dir = {x:1, y:0};
+
+function loop() {
+  ctx.fillStyle="#000";
+  ctx.fillRect(0,0,320,320);
+
+  let head = { x:snake[0].x + dir.x, y:snake[0].y + dir.y };
+  snake.unshift(head);
+
+  if (head.x===food.x && head.y===food.y){
+    food = { x:Math.floor(Math.random()*20), y:Math.floor(Math.random()*20) };
+  } else {
+    snake.pop();
+  }
+
+  if (head.x<0 || head.x>19 || head.y<0 || head.y>19 ||
+      snake.slice(1).some(s=>s.x===head.x && s.y===head.y)) {
+    alert("GAME OVER");
+    snake = [{x:10,y:10}];
+    dir = {x:1,y:0};
+  }
+
+  ctx.fillStyle="#0f0";
+  snake.forEach(s => ctx.fillRect(s.x*size, s.y*size, size-1,size-1));
+
+  ctx.fillStyle="#f00";
+  ctx.fillRect(food.x*size, food.y*size, size-1,size-1);
+
+  setTimeout(loop,100);
+}
+loop();
+
+window.addEventListener("keydown", e=>{
+  if (e.key==="ArrowUp") dir={x:0,y:-1};
+  if (e.key==="ArrowDown") dir={x:0,y:1};
+  if (e.key==="ArrowLeft") dir={x:-1,y:0};
+  if (e.key==="ArrowRight") dir={x:1,y:0};
+});
+</script>
+</body>
+</html>
