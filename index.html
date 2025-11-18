@@ -1,95 +1,103 @@
-<!DOCTYPE html>
-<html lang="id">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Kisah Sukses Pro — Full Dashboard</title>
-  <style>
-    body { font-family: Arial, Helvetica, sans-serif; background:#f0f2f5; margin:0; padding:20px; }
-    h2 { margin:0 0 10px 0; }
-    .grid { display:grid; grid-template-columns:1.1fr 1fr 1.2fr; gap:15px; }
-    .box { background:white; padding:15px; border-radius:12px; box-shadow:0 2px 10px rgba(0,0,0,0.1); }
-    textarea,input { width:100%; padding:10px; border-radius:8px; border:1px solid #ccc; margin-top:8px; margin-bottom:10px; box-sizing:border-box; }
-    button { padding:8px 12px; border-radius:8px; border:none; cursor:pointer; background:#ff9800; color:white; margin-top:5px; }
-    iframe { width:100%; border-radius:10px; }
-  </style>
-</head>
-<body>
+// server.js (paste ini menggantikan server.js lama)
+import express from "express";
+import cors from "cors";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
+import dotenv from "dotenv";
+import fetch from "node-fetch";
+import Groq from "groq-sdk";
+import path from "path";
+import fs from "fs";
+import { fileURLToPath } from "url";
 
-  <div class="grid">
+dotenv.config();
 
-    <!-- LEFT -->
-    <div>
-      <div class="box">
-        <h2>AI Assistant</h2>
-        <textarea id="userInput" rows="6" placeholder="Tulis pesan..."></textarea>
-        <button onclick="sendAI()">Kirim</button>
-        <div id="response" style="margin-top:10px;"></div>
-      </div>
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-      <div class="box" style="margin-top:15px">
-        <h2>Google Search</h2>
-        <input id="gSearch" placeholder="Cari di Google...">
-        <button onclick="goGoogle()">Search</button>
-        <div id="googleArea" style="margin-top:12px;"></div>
-      </div>
-    </div>
+const app = express();
 
-    <!-- MIDDLE -->
-    <div>
-      <div class="box">
-        <h2>Instagram Viewer</h2>
-        <button onclick="loadIG()">Open Instagram</button>
-        <div id="igArea" style="margin-top:10px;"></div>
-      </div>
+app.use(cors());
+app.use(helmet());
+app.use(express.json());
+app.use(rateLimit({ windowMs: 60 * 1000, max: 60 }));
 
-      <div class="box" style="margin-top:15px">
-        <h2>Facebook Viewer</h2>
-        <button onclick="loadFB()">Open Facebook</button>
-        <div id="fbArea" style="margin-top:10px;"></div>
-      </div>
+// --- Serve static files dari folder "public"
+const publicDir = path.join(__dirname, "public");
+console.log("Serving static from:", publicDir);
+app.use(express.static(publicDir));
 
-      <div class="box" style="margin-top:15px">
-        <h2>TikTok Search</h2>
-        <input id="ttSearch" placeholder="Cari TikTok...">
-        <button onclick="goTikTok()">Search</button>
-        <div id="ttArea" style="margin-top:10px;"></div>
-      </div>
-    </div>
+// ===== API (tetap seperti milikmu) =====
+const OPENAI_KEY = process.env.OPENAI_API_KEY || "";
+const GROQ_KEY = process.env.GROQ_API_KEY || "";
 
-    <!-- RIGHT -->
-    <div>
-      <div class="box">
-        <h2>YouTube Player + Search</h2>
-        <input id="ytSearch" placeholder="Cari video YouTube...">
-        <button onclick="searchYouTube()">Search</button>
-        <button onclick="randomVideo()">Random</button>
-        <div style="margin-top:12px;">
-          <iframe id="ytPlayer" height="260" src="https://www.youtube.com/embed/dQw4w9WgXcQ" allowfullscreen></iframe>
-        </div>
-      </div>
+async function callAI(prompt, model) {
+  if (OPENAI_KEY) {
+    const r = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${OPENAI_KEY}`,
+      },
+      body: JSON.stringify({
+        model: model || "gpt-4o-mini",
+        messages: [{ role: "user", content: prompt }],
+      }),
+    });
+    const j = await r.json();
+    return j.choices?.[0]?.message?.content || "No reply";
+  }
 
-      <div class="box" style="margin-top:15px">
-        <h2>Cuaca</h2>
-        <div id="weatherArea">Memuat...</div>
-      </div>
+  if (GROQ_KEY) {
+    const client = new Groq({ apiKey: GROQ_KEY });
+    const chat = await client.chat.completions.create({
+      model: model || "gemma2-9b-it",
+      messages: [{ role: "user", content: prompt }],
+    });
+    return chat.choices?.[0]?.message?.content || "No reply";
+  }
 
-      <div class="box" style="margin-top:15px">
-        <h2>Quote</h2>
-        <div id="quoteArea">Mengambil...</div>
-      </div>
+  return "AI key belum diatur.";
+}
 
-      <div class="box" style="margin-top:15px">
-        <h2>Game</h2>
-        <button onclick="window.open('tictactoe.html','_blank')">TicTacToe</button>
-        <button onclick="window.open('snake.html','_blank')">Snake</button>
-        <button onclick="window.open('tetris.html','_blank')">Tetris</button>
-        <button onclick="window.open('flappy.html','_blank')">Flappy Bird</button>
-      </div>
-    </div>
+app.post("/api/ai", async (req, res) => {
+  try {
+    const { prompt, model } = req.body;
+    if (!prompt) return res.status(400).json({ error: "Missing prompt" });
 
-  </div>
+    const reply = await callAI(prompt, model);
+    res.json({ reply });
+  } catch (err) {
+    console.error("AI Error:", err);
+    res.status(500).json({ error: "AI Error", detail: err.message });
+  }
+});
 
-  <script src="script.js"></script>
-</body>
-</html>
+const QUOTES = [
+  "Jangan menyerah. Proses tidak mengkhianati hasil.",
+  "Sukses dimulai ketika kamu berani melangkah.",
+  "Kerja keras + fokus = hasil nyata.",
+];
+
+app.get("/api/quote", (req, res) => {
+  const q = QUOTES[Math.floor(Math.random() * QUOTES.length)];
+  res.json({ quote: q });
+});
+
+app.get("/health", (req, res) => res.json({ status: "ok" }));
+
+// ===== Fallback: kirim public/index.html jika ada, jika tidak berikan 404 dan log jelas
+app.get("*", async (req, res) => {
+  const indexPath = path.join(publicDir, "index.html");
+  try {
+    await fs.promises.access(indexPath, fs.constants.R_OK);
+    res.sendFile(indexPath);
+  } catch (err) {
+    console.error(`Index file not found at ${indexPath} — returning 404`);
+    res.status(404).send("Index not found. Pastikan public/index.html ada di repository.");
+  }
+});
+
+// Start server
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`SERVER READY on port ${PORT}`));
