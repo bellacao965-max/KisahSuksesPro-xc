@@ -1,103 +1,64 @@
-// server.js (paste ini menggantikan server.js lama)
-import express from "express";
-import cors from "cors";
-import helmet from "helmet";
-import rateLimit from "express-rate-limit";
-import dotenv from "dotenv";
-import fetch from "node-fetch";
-import Groq from "groq-sdk";
-import path from "path";
-import fs from "fs";
-import { fileURLToPath } from "url";
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kisah Sukses Pro</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f4f4;
+      padding: 20px;
+      text-align: center;
+    }
+    #container {
+      background: white;
+      padding: 20px;
+      width: 90%;
+      max-width: 500px;
+      margin: auto;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+    button {
+      padding: 10px 20px;
+      background: orange;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      color: white;
+      font-size: 16px;
+    }
+    button:hover {
+      opacity: 0.8;
+    }
+    #result {
+      margin-top: 20px;
+      font-size: 18px;
+      font-weight: bold;
+    }
+  </style>
+</head>
 
-dotenv.config();
+<body>
+  <div id="container">
+    <h1>Kisah Sukses Pro</h1>
+    <p>Tekan tombol untuk mengambil quote motivasi.</p>
+    <button onclick="getQuote()">Ambil Quote</button>
+    <div id="result"></div>
+  </div>
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-const app = express();
-
-app.use(cors());
-app.use(helmet());
-app.use(express.json());
-app.use(rateLimit({ windowMs: 60 * 1000, max: 60 }));
-
-// --- Serve static files dari folder "public"
-const publicDir = path.join(__dirname, "public");
-console.log("Serving static from:", publicDir);
-app.use(express.static(publicDir));
-
-// ===== API (tetap seperti milikmu) =====
-const OPENAI_KEY = process.env.OPENAI_API_KEY || "";
-const GROQ_KEY = process.env.GROQ_API_KEY || "";
-
-async function callAI(prompt, model) {
-  if (OPENAI_KEY) {
-    const r = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${OPENAI_KEY}`,
-      },
-      body: JSON.stringify({
-        model: model || "gpt-4o-mini",
-        messages: [{ role: "user", content: prompt }],
-      }),
-    });
-    const j = await r.json();
-    return j.choices?.[0]?.message?.content || "No reply";
-  }
-
-  if (GROQ_KEY) {
-    const client = new Groq({ apiKey: GROQ_KEY });
-    const chat = await client.chat.completions.create({
-      model: model || "gemma2-9b-it",
-      messages: [{ role: "user", content: prompt }],
-    });
-    return chat.choices?.[0]?.message?.content || "No reply";
-  }
-
-  return "AI key belum diatur.";
-}
-
-app.post("/api/ai", async (req, res) => {
-  try {
-    const { prompt, model } = req.body;
-    if (!prompt) return res.status(400).json({ error: "Missing prompt" });
-
-    const reply = await callAI(prompt, model);
-    res.json({ reply });
-  } catch (err) {
-    console.error("AI Error:", err);
-    res.status(500).json({ error: "AI Error", detail: err.message });
-  }
-});
-
-const QUOTES = [
-  "Jangan menyerah. Proses tidak mengkhianati hasil.",
-  "Sukses dimulai ketika kamu berani melangkah.",
-  "Kerja keras + fokus = hasil nyata.",
-];
-
-app.get("/api/quote", (req, res) => {
-  const q = QUOTES[Math.floor(Math.random() * QUOTES.length)];
-  res.json({ quote: q });
-});
-
-app.get("/health", (req, res) => res.json({ status: "ok" }));
-
-// ===== Fallback: kirim public/index.html jika ada, jika tidak berikan 404 dan log jelas
-app.get("*", async (req, res) => {
-  const indexPath = path.join(publicDir, "index.html");
-  try {
-    await fs.promises.access(indexPath, fs.constants.R_OK);
-    res.sendFile(indexPath);
-  } catch (err) {
-    console.error(`Index file not found at ${indexPath} — returning 404`);
-    res.status(404).send("Index not found. Pastikan public/index.html ada di repository.");
-  }
-});
-
-// Start server
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`SERVER READY on port ${PORT}`));
+  <script>
+    async function getQuote() {
+      document.getElementById("result").innerText = "Memuat...";
+      try {
+        const r = await fetch("/api/quote");
+        const j = await r.json();
+        document.getElementById("result").innerText = j.quote;
+      } catch (e) {
+        document.getElementById("result").innerText = "Gagal mengambil data.";
+      }
+    }
+  </script>
+</body>
+</html>
